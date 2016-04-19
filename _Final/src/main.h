@@ -11,5 +11,6 @@
 void pwm_out();
 void timer_init();
 void ADC_init();
+void TIM3_PWM_mode();
 
 #endif /* MAIN_H_ */
