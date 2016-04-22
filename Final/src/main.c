@@ -35,6 +35,8 @@
 int main(void){
 	INITI();
 
+	TIM3_PWM_P8(17000);
+	TIM3_PWM_P7(17000);
 	while(1){}
 }
 

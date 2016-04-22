@@ -4,21 +4,27 @@
  *  Created on: Apr 19, 2016
  *      Author: mahowa
  */
+//TODO NOTES
+
+
+	//Look at timer_init() and clock
+	//PWM on PC8, PC7 (PC9 Works...)
+
+
 #include "stm32f0xx.h"
 #include "Lights.h"
 
 
-
+#define numReadings 25
 
 volatile int read_count;
-const int numReadings = 30;     // Averaging window size
-int readings[30];      // the readings from the analog input
+int readings[numReadings];      // the readings from the analog input
 int readIndex = 0;              // the index of the current reading
 int total = 0;                  // the running total
 int average = 0;
 int maxx = 0;                   // Find minn/maxx to normalize input
 int minn = 0;
-int gain = 100000;
+int gain = 5000;
 double normal = 0;
 const int NORMAL = 55;           //Gain for the normal paramater
 int OPT = 0;
@@ -32,6 +38,7 @@ void INITI(){
 	LIGHTS_AF_init();
 	ADC_init();
 	timer_init();
+
 }
 
 
@@ -49,7 +56,6 @@ void TIM2_IRQHandler(){
 		  minn = 0;
 	  }
 
-
 	  total = total + readings[readIndex];
 	  // advance to the next position in the array:
 	  readIndex = readIndex + 1;
@@ -63,15 +69,12 @@ void TIM2_IRQHandler(){
 	  // calculate the average and applies gain
 	  average = (total) / numReadings;
 
-	normal = (double)average/((double)maxx );
-	OPT = normal*gain;
-	volatile int dump = (int) OPT;
+		normal = (double)average/((double)maxx );
+		OPT = normal*gain;
+		volatile int dump = (int) OPT;
 
-
-
-
-	TIM3_PWM_mode(17000-dump); //17000 = OFF
-	TIM2->SR &= ~TIM_SR_UIF;
+		TIM3_PWM_P9(17000-dump); //17000 = OFF
+		TIM2->SR &= ~TIM_SR_UIF;
 }
 
 
@@ -104,11 +107,11 @@ void ADC_init() {							//Setup the ADC
 	ADC1->CR |= ADC_CR_ADSTART;				//Signal/Trigger the start of the continuous conversion
 }
 
-void TIM3_PWM_mode(int pulse){
+void TIM3_PWM_P9(int pulse){
 	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
-	TIM3->PSC = 47;			//set to 1 MHz
-	TIM3->ARR = 1000000;	//1000000 cycles per interrrpt
-							//1 interrrupt per second
+	TIM3->PSC = 47;				//set to 1 MHz
+	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
+								//1 interrrupt per second
 
 	TIM_OCInitTypeDef  TIM_OCInitStructure;
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
@@ -124,11 +127,50 @@ void TIM3_PWM_mode(int pulse){
 }
 
 
+void TIM3_PWM_P8(int pulse){
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	TIM3->PSC = 47;				//set to 1 MHz
+	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
+								//1 interrrupt per second
+
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = pulse;
+	TIM_OCInitStructure.TIM_OutputNState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OCNPolarity = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCIdleState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCNIdleState = (uint16_t) 0;
+	TIM_OC3Init(TIM3, &TIM_OCInitStructure);
+	TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+void TIM3_PWM_P7(int pulse){
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	TIM3->PSC = 47;				//set to 1 MHz
+	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
+								//1 interrrupt per second
+
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = pulse;
+	TIM_OCInitStructure.TIM_OutputNState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OCNPolarity = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCIdleState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCNIdleState = (uint16_t) 0;
+	TIM_OC2Init(TIM3, &TIM_OCInitStructure);
+	TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+
 void timer_init(){							//Setup the Music Read time
 	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;		//Connect TIM2 to the appropriate bus
 
 	//Highest frequency of music is 4000Hz
-	TIM2->PSC = 470;						//set to 1 Hz
+	TIM2->PSC = 4700;						//set to X Hz
 	TIM2->ARR = 10;						//Double the frequency to get an interrupt ever 8000 cycles
 
 	TIM2->DIER |= TIM_DIER_UIE;				//Enable UEV interrupt
@@ -140,13 +182,30 @@ void timer_init(){							//Setup the Music Read time
 void LIGHTS_AF_init(){
 
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN; 				// Enable peripheral clock to GPIOC
-	GPIOC->MODER |= GPIO_MODER_MODER9_1; 			// Set PC8 to AF mode
-	GPIOC->OTYPER &= ~(GPIO_OTYPER_OT_9);			// Set to push-pull output type
-	GPIOC->OSPEEDR &= ~(GPIO_OSPEEDR_OSPEEDR9_0 	// Set to low speed
-		| GPIO_OSPEEDR_OSPEEDR9_1);
-	GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPDR9_0 			// Set to no pull-up/down
-		| GPIO_PUPDR_PUPDR9_1);
-	GPIOC->AFR[1] &= ~(GPIO_AFRH_AFR9);				//alternate function 0 on pin 9
+
+	GPIOC->MODER 	|= GPIO_MODER_MODER9_1
+					| GPIO_MODER_MODER8_1
+					| GPIO_MODER_MODER7_1; 			// Set PC8 to AF mode
+
+	GPIOC->OTYPER &= ~(GPIO_OTYPER_OT_9|GPIO_OTYPER_OT_8|GPIO_OTYPER_OT_7);			// Set to push-pull output type
+
+	GPIOC->OSPEEDR &= ~((GPIO_OSPEEDR_OSPEEDR9_0 	// Set to low speed
+							| GPIO_OSPEEDR_OSPEEDR9_1)
+						|(GPIO_OSPEEDR_OSPEEDR8_0
+							| GPIO_OSPEEDR_OSPEEDR8_1)
+						|(GPIO_OSPEEDR_OSPEEDR7_0
+							| GPIO_OSPEEDR_OSPEEDR7_1));
+
+	GPIOC->PUPDR &= ~((GPIO_PUPDR_PUPDR9_0 			// Set to no pull-up/down
+						| GPIO_PUPDR_PUPDR9_1)
+					|(GPIO_PUPDR_PUPDR8_0
+						| GPIO_PUPDR_PUPDR8_1)
+					|(GPIO_PUPDR_PUPDR7_0
+						| GPIO_PUPDR_PUPDR7_1));
+
+	GPIOC->AFR[1] &= ~(	GPIO_AFRH_AFR9
+						|GPIO_AFRH_AFR8
+						|GPIO_AFRL_AFR7);				//alternate function 0 on pin 9
 }
 
 

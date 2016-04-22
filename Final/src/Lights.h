@@ -10,7 +10,9 @@
 
 void TIM2_IRQHandler();
 void ADC_init();
-void TIM3_PWM_mode(int pulse);
+void TIM3_PWM_P9(int pulse);
+void TIM3_PWM_P8(int pulse);
+void TIM3_PWM_P7(int pulse);
 void timer_init();
 void LIGHTS_AF_init();
 void INITI();
