@@ -8,12 +8,16 @@
 #ifndef LIGHTS_H_
 #define LIGHTS_H_
 
-void TIM2_IRQHandler();
+void TIM3_PWM_RED(int pulse);
+void TIM3_PWM_GREEN(int pulse);
+void TIM3_PWM_BLUE(int pulse);
+
 void ADC_init();
-void TIM3_PWM_P9(int pulse);
-void TIM3_PWM_P8(int pulse);
-void TIM3_PWM_P7(int pulse);
-void timer_init();
 void LIGHTS_AF_init();
 void INITI();
+void btn_init();
+
+void  RGB(int R, int G, int B);
+int Map(int value);
+
 #endif /* LIGHTS_H_ */

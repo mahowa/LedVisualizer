@@ -13,69 +13,62 @@
 
 #include "stm32f0xx.h"
 #include "Lights.h"
+#include "msgeq.h"
 
+//0-255
+//Maps Red, Green, Blue 0-255 to the pwm output necissary to
+//Generate the collor
+void  RGB(int R, int G, int B){
+	int red = Map(R);
+	int green = Map(G);
+	int blue = Map(B);
 
-#define numReadings 25
+	TIM3_PWM_RED(red);
+	TIM3_PWM_GREEN(green);
+	TIM3_PWM_BLUE(blue);
+}
 
-volatile int read_count;
-int readings[numReadings];      // the readings from the analog input
-int readIndex = 0;              // the index of the current reading
-int total = 0;                  // the running total
-int average = 0;
-int maxx = 0;                   // Find minn/maxx to normalize input
-int minn = 0;
-int gain = 5000;
-double normal = 0;
-const int NORMAL = 55;           //Gain for the normal paramater
-int OPT = 0;
+//Returns 0-255 mapped to 65535
+int Map(int value){
+	double percentage = (double)value/255.0;
+	int mVal = 17000*percentage;
+	return 17000 - mVal;
+}
 
 
 void INITI(){
-	for(int i = 0; i<numReadings; i++){
-		readings[i] = 0;
-	}
-
 	LIGHTS_AF_init();
 	ADC_init();
-	timer_init();
-
+	MSGEQ_Clock_init();
+	MSGEQ_StrobeBtn_init();
+	btn_init();
 }
 
-
-void TIM2_IRQHandler(){
-	  // subtract the last reading:
-	  total = total - readings[readIndex];
-	  // read from the sensor:
-	  readings[readIndex] = ADC1->DR;;
-	  // add the reading to the total:
-
-	  if (maxx < readings[readIndex]){
-		  maxx = readings[readIndex];
-	  }
-	  if (minn > readings[readIndex]){
-		  minn = 0;
-	  }
-
-	  total = total + readings[readIndex];
-	  // advance to the next position in the array:
-	  readIndex = readIndex + 1;
-
-	  // if we're at the end of the array...
-	  if (readIndex >= numReadings) {
-		  // ...wrap around to the beginning:
-		  readIndex = 0;
-	  }
-
-	  // calculate the average and applies gain
-	  average = (total) / numReadings;
-
-		normal = (double)average/((double)maxx );
-		OPT = normal*gain;
-		volatile int dump = (int) OPT;
-
-		TIM3_PWM_P9(17000-dump); //17000 = OFF
-		TIM2->SR &= ~TIM_SR_UIF;
+void EXTI0_1_IRQHandler(void){
+	MSGEQ_Strobe();
+	EXTI->PR |= 1;
 }
+void EXTI4_15_IRQHandler(){
+	MSGEQ_Reset();
+	EXTI->PR |=(1<<8);
+}
+
+void btn_init(){
+	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+	RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+
+	//Make buttons pull down
+	GPIOB->PUPDR |= 1<<1 |1<<13;
+
+	EXTI->RTSR |=(1 | 1<<8);		//Rising Clock edge
+	EXTI->IMR |= (1 | 1<<8);		//Input register
+
+	NVIC_EnableIRQ(EXTI0_1_IRQn);
+	NVIC_SetPriority(EXTI0_1_IRQn,1);
+	NVIC_EnableIRQ(EXTI4_15_IRQn);		//Interrupt handler set
+	NVIC_SetPriority(EXTI4_15_IRQn,1);	//Set priority of the interrupt
+}
+
 
 
 
@@ -88,99 +81,23 @@ void ADC_init() {							//Setup the ADC
 	ADC1->CFGR2 |= ADC_CFGR2_CKMODE;		//Asyncronous
 
 	ADC1->CR |= ADC_CR_ADCAL;				// Start an ADC self-calibration cycle
-	while((ADC1->CR & ADC_CR_ADCAL) != 0)	//wait until it's complete
-	{
-		//Wait
-	}
+	while((ADC1->CR & ADC_CR_ADCAL) != 0){}	//wait until it's complete
 
-	/// TODO: Enable the ADC and wait until it's ready to run
 
 
 	ADC1->CHSELR |= ADC_CHSELR_CHSEL1;		//Set the ADC channel
 
 	ADC1->CR |= ADC_CR_ADEN;				//Enable
-	while((ADC1->ISR & ADC_ISR_ADRDY) != 0)//Wait unit ready
-	{
-		//Wait
-	}
+	while((ADC1->ISR & ADC_ISR_ADRDY) != 0){}//Wait unit ready
+
 
 	ADC1->CR |= ADC_CR_ADSTART;				//Signal/Trigger the start of the continuous conversion
 }
 
-void TIM3_PWM_P9(int pulse){
-	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
-	TIM3->PSC = 47;				//set to 1 MHz
-	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
-								//1 interrrupt per second
 
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = pulse;
-	TIM_OCInitStructure.TIM_OutputNState = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-	TIM_OCInitStructure.TIM_OCNPolarity = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCIdleState = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCNIdleState = (uint16_t) 0;
-	TIM_OC4Init(TIM3, &TIM_OCInitStructure);
-	TIM3->CR1 |= TIM_CR1_CEN;
-}
-
-
-void TIM3_PWM_P8(int pulse){
-	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
-	TIM3->PSC = 47;				//set to 1 MHz
-	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
-								//1 interrrupt per second
-
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = pulse;
-	TIM_OCInitStructure.TIM_OutputNState = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-	TIM_OCInitStructure.TIM_OCNPolarity = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCIdleState = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCNIdleState = (uint16_t) 0;
-	TIM_OC3Init(TIM3, &TIM_OCInitStructure);
-	TIM3->CR1 |= TIM_CR1_CEN;
-}
-
-void TIM3_PWM_P7(int pulse){
-	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
-	TIM3->PSC = 47;				//set to 1 MHz
-	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
-								//1 interrrupt per second
-
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = pulse;
-	TIM_OCInitStructure.TIM_OutputNState = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-	TIM_OCInitStructure.TIM_OCNPolarity = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCIdleState = (uint16_t) 0;
-	TIM_OCInitStructure.TIM_OCNIdleState = (uint16_t) 0;
-	TIM_OC2Init(TIM3, &TIM_OCInitStructure);
-	TIM3->CR1 |= TIM_CR1_CEN;
-}
-
-
-void timer_init(){							//Setup the Music Read time
-	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;		//Connect TIM2 to the appropriate bus
-
-	//Highest frequency of music is 4000Hz
-	TIM2->PSC = 4700;						//set to X Hz
-	TIM2->ARR = 10;						//Double the frequency to get an interrupt ever 8000 cycles
-
-	TIM2->DIER |= TIM_DIER_UIE;				//Enable UEV interrupt
-	TIM2->CR1 |= TIM_CR1_CEN;				//Enable timer
-	NVIC_EnableIRQ(TIM2_IRQn);				//Interrupt
-}
 
 
 void LIGHTS_AF_init(){
-
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN; 				// Enable peripheral clock to GPIOC
 
 	GPIOC->MODER 	|= GPIO_MODER_MODER9_1
@@ -208,5 +125,61 @@ void LIGHTS_AF_init(){
 						|GPIO_AFRL_AFR7);				//alternate function 0 on pin 9
 }
 
+void TIM3_PWM_RED(int pulse){
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	TIM3->PSC = 47;				//set to 1 MHz
+	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
+								//1 interrrupt per second
 
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = pulse;
+	TIM_OCInitStructure.TIM_OutputNState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OCNPolarity = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCIdleState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCNIdleState = (uint16_t) 0;
+	TIM_OC4Init(TIM3, &TIM_OCInitStructure);
+	TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+
+void TIM3_PWM_GREEN(int pulse){
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	TIM3->PSC = 47;				//set to 1 MHz
+	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
+								//1 interrrupt per second
+
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = pulse;
+	TIM_OCInitStructure.TIM_OutputNState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OCNPolarity = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCIdleState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCNIdleState = (uint16_t) 0;
+	TIM_OC3Init(TIM3, &TIM_OCInitStructure);
+	TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+void TIM3_PWM_BLUE(int pulse){
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	TIM3->PSC = 47;				//set to 1 MHz
+	TIM3->ARR = 1000000;		//1000000 cycles per interrrpt
+								//1 interrrupt per second
+
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = pulse;
+	TIM_OCInitStructure.TIM_OutputNState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OCNPolarity = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCIdleState = (uint16_t) 0;
+	TIM_OCInitStructure.TIM_OCNIdleState = (uint16_t) 0;
+	TIM_OC2Init(TIM3, &TIM_OCInitStructure);
+	TIM3->CR1 |= TIM_CR1_CEN;
+}
 

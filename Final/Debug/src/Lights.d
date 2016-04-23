@@ -26,7 +26,8 @@ src/Lights.o: ../src/Lights.c ../system/include/cmsis/stm32f0xx.h \
  ../system/include/stm32f0-stdperiph/stm32f0xx_tim.h \
  ../system/include/stm32f0-stdperiph/stm32f0xx_usart.h \
  ../system/include/stm32f0-stdperiph/stm32f0xx_wwdg.h \
- ../system/include/stm32f0-stdperiph/stm32f0xx_misc.h ../src/Lights.h
+ ../system/include/stm32f0-stdperiph/stm32f0xx_misc.h ../src/Lights.h \
+ ../src/msgeq.h
 
 ../system/include/cmsis/stm32f0xx.h:
 
@@ -89,3 +90,5 @@ src/Lights.o: ../src/Lights.c ../system/include/cmsis/stm32f0xx.h \
 ../system/include/stm32f0-stdperiph/stm32f0xx_misc.h:
 
 ../src/Lights.h:
+
+../src/msgeq.h:

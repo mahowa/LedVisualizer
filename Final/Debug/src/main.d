@@ -26,7 +26,8 @@ src/main.o: ../src/main.c ../system/include/diag/Trace.h \
  ../system/include/stm32f0-stdperiph/stm32f0xx_tim.h \
  ../system/include/stm32f0-stdperiph/stm32f0xx_usart.h \
  ../system/include/stm32f0-stdperiph/stm32f0xx_wwdg.h \
- ../system/include/stm32f0-stdperiph/stm32f0xx_misc.h ../src/Lights.h
+ ../system/include/stm32f0-stdperiph/stm32f0xx_misc.h ../src/msgeq.h \
+ ../src/Lights.h ../src/delay.h
 
 ../system/include/diag/Trace.h:
 
@@ -90,4 +91,8 @@ src/main.o: ../src/main.c ../system/include/diag/Trace.h \
 
 ../system/include/stm32f0-stdperiph/stm32f0xx_misc.h:
 
+../src/msgeq.h:
+
 ../src/Lights.h:
+
+../src/delay.h:
