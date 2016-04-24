@@ -71,7 +71,7 @@ int main(void){
 	}
 
 ///////////////START
-	RGB(255,255,0);	//Set base color
+	RGB(0,50,0);	//Set base color
 
 
 	//Set starting frequency
