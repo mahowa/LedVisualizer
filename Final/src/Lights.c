@@ -4,11 +4,6 @@
  *  Created on: Apr 19, 2016
  *      Author: mahowa
  */
-//TODO NOTES
-
-
-	//Look at timer_init() and clock
-	//PWM on PC8, PC7 (PC9 Works...)
 
 
 #include "stm32f0xx.h"
@@ -46,10 +41,16 @@ void INITI(){
 
 void EXTI0_1_IRQHandler(void){
 	MSGEQ_Strobe();
+	strobeIndex++;
+
+	if(strobeIndex ==8)
+		strobeIndex = 0;
+
 	EXTI->PR |= 1;
 }
 void EXTI4_15_IRQHandler(){
 	MSGEQ_Reset();
+	strobeIndex = 0;
 	EXTI->PR |=(1<<8);
 }
 
@@ -65,6 +66,9 @@ void btn_init(){
 
 	NVIC_EnableIRQ(EXTI0_1_IRQn);
 	NVIC_SetPriority(EXTI0_1_IRQn,1);
+
+
+
 	NVIC_EnableIRQ(EXTI4_15_IRQn);		//Interrupt handler set
 	NVIC_SetPriority(EXTI4_15_IRQn,1);	//Set priority of the interrupt
 }

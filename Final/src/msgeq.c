@@ -11,7 +11,7 @@
 void MSGEQ_StrobeBtn_init(){
 	RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
 	GPIOB->MODER |= GPIO_MODER_MODER12_0 |GPIO_MODER_MODER11_0;
-	GPIOB->PUPDR |= ~(3<<22 | 3<<24);
+	//GPIOB->PUPDR |= 3<<23 | 3<<25;
 
 	//Set both pins to Low
 	GPIOB->ODR &= ~(GPIO_ODR_12);
@@ -28,15 +28,15 @@ void MSGEQ_StrobeBtn_init(){
 	GPIOB->ODR &= ~(GPIO_ODR_11);
 
 	//Set strobe to High
-	GPIOB->ODR |= GPIO_ODR_12;
+	//GPIOB->ODR |= GPIO_ODR_12;
 }
 
 void MSGEQ_Strobe(){
-	GPIOB->ODR &= ~(GPIO_ODR_12);
+	GPIOB->ODR |= (GPIO_ODR_12);
 	volatile int i = 0;
 	for(i;i<10000;i++);
 
-	GPIOB->ODR |= GPIO_ODR_12;
+	GPIOB->ODR &= ~GPIO_ODR_12;
 }
 
 void MSGEQ_Reset(){
@@ -47,12 +47,12 @@ void MSGEQ_Reset(){
 }
 
 void MSGEQ_Clock_init(){
-	//Put PA8 into alternate function mode
+
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
 	GPIOA->MODER 	|= GPIO_MODER_MODER7_1;
 	GPIOA->OTYPER &= ~(GPIO_OTYPER_OT_7);
 	GPIOA->OSPEEDR &= ~(GPIO_OSPEEDR_OSPEEDR7_0 | GPIO_OSPEEDR_OSPEEDR7_1);
-	GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR7_0 | GPIO_PUPDR_PUPDR7_1);
+	GPIOA->PUPDR |= ~(GPIO_PUPDR_PUPDR7_0 | GPIO_PUPDR_PUPDR7_1);
 	GPIOA->AFR[0] |= 1<<30;
 
 	RCC->APB1ENR |= RCC_APB1ENR_TIM14EN;

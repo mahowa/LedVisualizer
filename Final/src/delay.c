@@ -8,14 +8,14 @@
 
 // Initializes the SysTick timer to 1000Hz, gives 1mS delay resolution
 void delay_init(void) {
-    SysTick_Config(SystemCoreClock/1000);   // Divide system clock by 1000 to get 1mS
+    SysTick_Config(SystemCoreClock/1000);   // Divide system clock by 1000 to get 1uS
     NVIC_SetPriority(SysTick_IRQn, 1);      // Set to high-priority
     delay_tics = 0;
     SysTick_callback = NULL;
 }
 
 // Delays the specified number of milliseconds
-void delay_ms(uint32_t delay) {
+void delay_us(uint32_t delay) {
     delay_tics = delay;
     while(delay_tics) {     // Loop until delay_tics == 0
         __WFI();            // Put processor to sleep until interrupt occurs

@@ -18,7 +18,7 @@ callback_TypeDef SysTick_callback;
 void delay_init(void);
 
 // Delays the specified number of milliseconds
-void delay_ms(uint32_t delay);
+void delay_us(uint32_t delay);
 
 // Accepts a function pointer to a void function without parameters
 // Registers as a callback to be invoked at every SysTick interrupt
